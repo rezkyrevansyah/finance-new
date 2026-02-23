@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Konfigurasi global (1 baris saja, tidak perlu banyak)
+model Config {
+  id              String  @id @default(cuid())
+  key             String  @unique  // e.g. 'monthly_salary', 'initial_balance'
+  value           String           // disimpan sebagai string, parse di app
+  updatedAt       DateTime @updatedAt
+}
+
+// THR Bonus — bisa lebih dari 1
+model ThrBonus {
+  id              String  @id @default(cuid())
+  label           String           // e.g. 'THR Lebaran', 'THR Akhir Tahun'
+  period          Int              // 1-12 (bulan dimana THR ini masuk)
+  year            Int              // 2026
+  amount          Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([year, period])
+}
+
+// Pengeluaran / Expense
+model Expense {
+  id              String  @id @default(cuid())
+  name            String           // nama pengeluaran bebas
+  amount          Float
+  period          Int              // 1-12 (bulan periode ini masuk)
+  year            Int              // 2026
+  date            DateTime?        // optional: tanggal spesifik
+  note            String?          // catatan opsional
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([year, period])
+  @@index([createdAt])
+}
+
+// Force Set End Balance
+model ForceBalance {
+  id              String  @id @default(cuid())
+  period          Int              // 1-12
+  year            Int              // 2026
+  amount          Float            // nilai end balance yang di-override
+  reason          String?          // alasan opsional
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([period, year])         // hanya 1 force balance per periode
+}
+
+// Wishlist
+model Wishlist {
+  id              String  @id @default(cuid())
+  name            String           // nama barang
+  price           Float            // harga rencana
+  targetPeriod    Int?             // bulan rencana dibeli (nullable)
+  targetYear      Int?             // tahun rencana
+  isActive        Boolean @default(true)  // toggle aktif/non-aktif
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([targetPeriod])
+}
