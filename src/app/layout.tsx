@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Sidebar } from '@/components/Sidebar'
-import { BottomNav } from '@/components/BottomNav'
+import { HamburgerMenu } from '@/components/HamburgerMenu'
 import { Toaster } from '@/components/ui/sonner'
 
 const geistSans = Geist({
@@ -30,19 +30,16 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex h-screen overflow-hidden">
-          {/* Sidebar - Desktop only */}
+        <div className="flex h-screen overflow-hidden bg-slate-50">
           <Sidebar />
 
-          {/* Main content */}
-          <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 md:pb-0">
-            <div className="container mx-auto px-4 py-6 md:px-6 md:py-8">
+          <main className="flex-1 overflow-y-auto">
+            <div className="container mx-auto px-4 py-6 md:px-6 md:py-8 max-w-7xl">
               {children}
             </div>
           </main>
 
-          {/* Bottom Navigation - Mobile only */}
-          <BottomNav />
+          <HamburgerMenu />
         </div>
 
         <Toaster />

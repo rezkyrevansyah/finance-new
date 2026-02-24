@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { getPeriodLabel } from '@/lib/utils'
+import { useRupiahInput } from '@/hooks/useRupiahInput'
 
 interface ExpenseFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   expense?: Expense | null
-  onSuccess: () => void
+  onSuccess: (expense?: Expense) => void
 }
 
 interface Expense {
@@ -28,9 +30,10 @@ interface Expense {
 
 export function ExpenseForm({ open, onOpenChange, expense, onSuccess }: ExpenseFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const amount = useRupiahInput(0)
+  const [isRecurring, setIsRecurring] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    amount: '',
     period: '1',
     year: 2026,
     date: '',
@@ -41,21 +44,23 @@ export function ExpenseForm({ open, onOpenChange, expense, onSuccess }: ExpenseF
     if (expense) {
       setFormData({
         name: expense.name,
-        amount: String(expense.amount),
         period: String(expense.period),
         year: expense.year,
         date: expense.date ? expense.date.split('T')[0] : '',
         note: expense.note || '',
       })
+      amount.setValue(expense.amount)
+      setIsRecurring(false)
     } else {
       setFormData({
         name: '',
-        amount: '',
         period: '1',
         year: 2026,
         date: '',
         note: '',
       })
+      amount.setValue(0)
+      setIsRecurring(false)
     }
   }, [expense, open])
 
@@ -64,29 +69,67 @@ export function ExpenseForm({ open, onOpenChange, expense, onSuccess }: ExpenseF
     setIsSubmitting(true)
 
     try {
-      const payload = {
-        name: formData.name,
-        amount: parseFloat(formData.amount),
-        period: parseInt(formData.period),
-        year: formData.year,
-        date: formData.date || undefined,
-        note: formData.note || undefined,
+      // If recurring, create expense for all 12 months
+      if (isRecurring && !expense) {
+        const promises = []
+        for (let period = 1; period <= 12; period++) {
+          const payload = {
+            name: formData.name,
+            amount: amount.numericValue,
+            period: period,
+            year: formData.year,
+            date: formData.date || undefined,
+            note: formData.note || undefined,
+          }
+          promises.push(
+            fetch('/api/expenses', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            })
+          )
+        }
+
+        const responses = await Promise.all(promises)
+        const failedResponses = responses.filter(r => !r.ok)
+
+        if (failedResponses.length > 0) {
+          throw new Error('Failed to save some recurring expenses')
+        }
+
+        toast.success('Expense recurring berhasil ditambahkan untuk semua bulan')
+      } else {
+        // Single expense
+        const payload = {
+          name: formData.name,
+          amount: amount.numericValue,
+          period: parseInt(formData.period),
+          year: formData.year,
+          date: formData.date || undefined,
+          note: formData.note || undefined,
+        }
+
+        const url = expense ? `/api/expenses/${expense.id}` : '/api/expenses'
+        const method = expense ? 'PUT' : 'POST'
+
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to save expense')
+        }
+
+        const savedExpense = await response.json()
+        toast.success(expense ? 'Expense berhasil diupdate' : 'Expense berhasil ditambahkan')
+
+        onSuccess(savedExpense)
+        onOpenChange(false)
+        return
       }
 
-      const url = expense ? `/api/expenses/${expense.id}` : '/api/expenses'
-      const method = expense ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save expense')
-      }
-
-      toast.success(expense ? 'Expense berhasil diupdate' : 'Expense berhasil ditambahkan')
       onSuccess()
       onOpenChange(false)
     } catch (error) {
@@ -120,22 +163,49 @@ export function ExpenseForm({ open, onOpenChange, expense, onSuccess }: ExpenseF
             <Label htmlFor="amount">Jumlah (Rp) *</Label>
             <Input
               id="amount"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              placeholder="0"
+              type="text"
+              value={amount.displayValue}
+              onChange={(e) => amount.handleChange(e.target.value)}
+              placeholder="Masukkan nominal"
               required
             />
           </div>
 
+          {/* Recurring Expense Toggle - Only show when adding new */}
+          {!expense && (
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="recurring" className="text-base">
+                    Expense Recurring
+                  </Label>
+                  <p className="text-sm text-slate-500">
+                    Tambahkan expense ini ke semua bulan (1-12)
+                  </p>
+                </div>
+                <Switch
+                  id="recurring"
+                  checked={isRecurring}
+                  onCheckedChange={setIsRecurring}
+                />
+              </div>
+              {isRecurring && (
+                <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                  Expense ini akan ditambahkan ke semua 12 bulan dengan nama dan jumlah yang sama
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="period">Periode *</Label>
+              <Label htmlFor="period">
+                Periode * {isRecurring && '(akan diabaikan)'}
+              </Label>
               <Select
                 value={formData.period}
                 onValueChange={(value) => setFormData({ ...formData, period: value })}
+                disabled={isRecurring}
               >
                 <SelectTrigger>
                   <SelectValue />

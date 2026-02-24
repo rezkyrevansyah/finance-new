@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner'
 import { formatRupiah, getPeriodLabel } from '@/lib/utils'
 import { Trash2, AlertTriangle } from 'lucide-react'
+import { useRupiahInput } from '@/hooks/useRupiahInput'
 
 interface ThrBonus {
   id: string
@@ -50,19 +51,21 @@ interface ForceBalance {
 
 export default function SettingsPage() {
   const [config, setConfig] = useState({ monthly_salary: 0, initial_balance: 0 })
-  const [monthlySalary, setMonthlySalary] = useState('')
-  const [initialBalance, setInitialBalance] = useState('')
   const [thrBonuses, setThrBonuses] = useState<ThrBonus[]>([])
   const [forceBalances, setForceBalances] = useState<ForceBalance[]>([])
+
+  // Rupiah inputs with thousand separator
+  const monthlySalary = useRupiahInput(0)
+  const initialBalance = useRupiahInput(0)
 
   // THR Form
   const [thrLabel, setThrLabel] = useState('')
   const [thrPeriod, setThrPeriod] = useState('1')
-  const [thrAmount, setThrAmount] = useState('')
+  const thrAmount = useRupiahInput(0)
 
   // Force Balance Form
   const [fbPeriod, setFbPeriod] = useState('1')
-  const [fbAmount, setFbAmount] = useState('')
+  const fbAmount = useRupiahInput(0)
   const [fbReason, setFbReason] = useState('')
 
   // Delete dialogs
@@ -70,7 +73,6 @@ export default function SettingsPage() {
   const [deleteFbId, setDeleteFbId] = useState<string | null>(null)
 
   const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     fetchData()
@@ -78,11 +80,10 @@ export default function SettingsPage() {
 
   const fetchData = async () => {
     try {
-      setIsLoading(true)
       const [configRes, thrRes, fbRes] = await Promise.all([
-        fetch('/api/config'),
-        fetch('/api/thr'),
-        fetch('/api/force-balance'),
+        fetch('/api/config', { cache: 'no-store' }),
+        fetch('/api/thr', { cache: 'no-store' }),
+        fetch('/api/force-balance', { cache: 'no-store' }),
       ])
 
       const configData = await configRes.json()
@@ -90,15 +91,13 @@ export default function SettingsPage() {
       const fbData = await fbRes.json()
 
       setConfig(configData)
-      setMonthlySalary(String(configData.monthly_salary))
-      setInitialBalance(String(configData.initial_balance))
+      monthlySalary.setValue(configData.monthly_salary)
+      initialBalance.setValue(configData.initial_balance)
       setThrBonuses(thrData)
       setForceBalances(fbData)
     } catch (error) {
       console.error('Error fetching data:', error)
       toast.error('Gagal memuat data')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -109,12 +108,12 @@ export default function SettingsPage() {
         fetch('/api/config', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: 'monthly_salary', value: monthlySalary }),
+          body: JSON.stringify({ key: 'monthly_salary', value: monthlySalary.numericValue }),
         }),
         fetch('/api/config', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: 'initial_balance', value: initialBalance }),
+          body: JSON.stringify({ key: 'initial_balance', value: initialBalance.numericValue }),
         }),
       ])
       toast.success('Konfigurasi berhasil disimpan')
@@ -137,7 +136,7 @@ export default function SettingsPage() {
           label: thrLabel,
           period: parseInt(thrPeriod),
           year: 2026,
-          amount: parseFloat(thrAmount),
+          amount: thrAmount.numericValue,
         }),
       })
 
@@ -146,7 +145,7 @@ export default function SettingsPage() {
       toast.success('THR berhasil ditambahkan')
       setThrLabel('')
       setThrPeriod('1')
-      setThrAmount('')
+      thrAmount.setValue(0)
       fetchData()
     } catch (error) {
       console.error('Error adding THR:', error)
@@ -187,7 +186,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           period: parseInt(fbPeriod),
           year: 2026,
-          amount: parseFloat(fbAmount),
+          amount: fbAmount.numericValue,
           reason: fbReason || undefined,
         }),
       })
@@ -196,7 +195,7 @@ export default function SettingsPage() {
 
       toast.success('Force balance berhasil diset')
       setFbPeriod('1')
-      setFbAmount('')
+      fbAmount.setValue(0)
       setFbReason('')
       fetchData()
     } catch (error) {
@@ -229,24 +228,18 @@ export default function SettingsPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Settings</h1>
-          <p className="mt-2 text-sm text-gray-600">Configure salary, THR, and force balance</p>
-        </div>
-        <div className="h-96 animate-pulse rounded-lg bg-gray-200" />
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Settings</h1>
-        <p className="mt-2 text-sm text-gray-600">Configure salary, THR, and force balance</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">
+            Settings
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Configure salary, THR, and force balance
+          </p>
+        </div>
       </div>
 
       {/* Section 1: Konfigurasi Dasar */}
@@ -261,12 +254,10 @@ export default function SettingsPage() {
               <Label htmlFor="salary">Monthly Salary (Rp)</Label>
               <Input
                 id="salary"
-                type="number"
-                min="0"
-                step="1000"
-                value={monthlySalary}
-                onChange={(e) => setMonthlySalary(e.target.value)}
-                placeholder="0"
+                type="text"
+                value={monthlySalary.displayValue}
+                onChange={(e) => monthlySalary.handleChange(e.target.value)}
+                placeholder="Masukkan nominal"
               />
               <p className="text-xs text-gray-500">
                 Saat ini: {formatRupiah(config.monthly_salary)}
@@ -276,12 +267,10 @@ export default function SettingsPage() {
               <Label htmlFor="initial">Initial Balance (1 Jan 2026)</Label>
               <Input
                 id="initial"
-                type="number"
-                min="0"
-                step="1000"
-                value={initialBalance}
-                onChange={(e) => setInitialBalance(e.target.value)}
-                placeholder="0"
+                type="text"
+                value={initialBalance.displayValue}
+                onChange={(e) => initialBalance.handleChange(e.target.value)}
+                placeholder="Masukkan nominal"
               />
               <p className="text-xs text-gray-500">
                 Saat ini: {formatRupiah(config.initial_balance)}
@@ -373,12 +362,10 @@ export default function SettingsPage() {
                 <Label htmlFor="thr-amount">Jumlah (Rp)</Label>
                 <Input
                   id="thr-amount"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={thrAmount}
-                  onChange={(e) => setThrAmount(e.target.value)}
-                  placeholder="0"
+                  type="text"
+                  value={thrAmount.displayValue}
+                  onChange={(e) => thrAmount.handleChange(e.target.value)}
+                  placeholder="Masukkan nominal"
                   required
                 />
               </div>
@@ -469,11 +456,10 @@ export default function SettingsPage() {
                 <Label htmlFor="fb-amount">Amount (Rp)</Label>
                 <Input
                   id="fb-amount"
-                  type="number"
-                  step="1000"
-                  value={fbAmount}
-                  onChange={(e) => setFbAmount(e.target.value)}
-                  placeholder="0"
+                  type="text"
+                  value={fbAmount.displayValue}
+                  onChange={(e) => fbAmount.handleChange(e.target.value)}
+                  placeholder="Masukkan nominal"
                   required
                 />
               </div>

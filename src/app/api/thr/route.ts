@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     const thrBonuses = await prisma.thrBonus.findMany({
@@ -8,7 +11,11 @@ export async function GET() {
       orderBy: { createdAt: 'asc' }
     })
 
-    return NextResponse.json(thrBonuses)
+    return NextResponse.json(thrBonuses, {
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch THR bonuses', details: error },

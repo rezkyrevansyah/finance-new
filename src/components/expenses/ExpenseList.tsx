@@ -2,17 +2,8 @@
 
 import { useState } from 'react'
 import { formatRupiah, getPeriodLabel } from '@/lib/utils'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Select,
   SelectContent,
@@ -45,7 +36,7 @@ interface Expense {
 interface ExpenseListProps {
   expenses: Expense[]
   onEdit: (expense: Expense) => void
-  onDelete: () => void
+  onDelete: (id: string) => void
 }
 
 export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
@@ -62,12 +53,14 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
   const handleDelete = async () => {
     if (!deleteId) return
 
-    // Close dialog & update UI instantly
+    const idToDelete = deleteId
     setDeleteId(null)
-    onDelete()
+
+    // Optimistic update - call parent to remove from UI immediately
+    onDelete(idToDelete)
 
     try {
-      const response = await fetch(`/api/expenses/${deleteId}`, {
+      const response = await fetch(`/api/expenses/${idToDelete}`, {
         method: 'DELETE',
       })
 
@@ -79,114 +72,153 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
     } catch (error) {
       console.error('Error deleting expense:', error)
       toast.error('Gagal menghapus expense')
-      // Refetch to restore
-      onDelete()
+      // On error, parent should refetch to restore data
+      window.location.reload()
     }
   }
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return '-'
     const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+
+  if (expenses.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border p-12">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-red-500/20 to-rose-500/20 flex items-center justify-center mb-4">
+            <Trash2 className="h-8 w-8 text-red-500" />
+          </div>
+          <p className="text-slate-600 font-medium">Belum ada expense</p>
+          <p className="text-slate-400 text-sm mt-1">Klik tombol "Tambah Expense" untuk memulai</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filter */}
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium">Filter Periode:</label>
-        <Select value={filterPeriod} onValueChange={setFilterPeriod}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Periode</SelectItem>
-            {[...Array(12)].map((_, i) => {
-              const period = i + 1
-              return (
-                <SelectItem key={period} value={String(period)}>
-                  {getPeriodLabel(period)}
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead className="text-right">Jumlah</TableHead>
-                <TableHead>Periode</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Catatan</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredExpenses.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
-                    Tidak ada pengeluaran
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredExpenses.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell className="font-medium">{expense.name}</TableCell>
-                    <TableCell className="text-right font-semibold text-red-600">
-                      {formatRupiah(expense.amount)}
-                    </TableCell>
-                    <TableCell>{getPeriodLabel(expense.period)}</TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {formatDate(expense.date)}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm text-gray-600">
-                      {expense.note || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(expense)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteId(expense.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Total */}
-        {filteredExpenses.length > 0 && (
-          <div className="border-t bg-gray-50 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-700">
-                Total Pengeluaran ({filteredExpenses.length} item)
-              </span>
-              <span className="text-xl font-bold text-red-600">
-                {formatRupiah(totalExpenses)}
-              </span>
+    <>
+      <div className="bg-white rounded-lg border p-6">
+        {/* Filter Section */}
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center">
+              <Filter className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Filter by Period</h3>
+              <p className="text-xs text-slate-500">Total: {filteredExpenses.length} expenses</p>
             </div>
           </div>
-        )}
-      </Card>
+
+          <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Semua Periode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Periode</SelectItem>
+              {[...Array(12)].map((_, i) => {
+                const period = i + 1
+                return (
+                  <SelectItem key={period} value={String(period)}>
+                    {getPeriodLabel(period)}
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-4 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Period
+                </th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="text-right py-4 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="text-right py-4 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredExpenses.map((expense) => (
+                <tr
+                  key={expense.id}
+                  className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                >
+                  <td className="py-4 px-4">
+                    <div>
+                      <div className="font-medium text-slate-900">{expense.name}</div>
+                      {expense.note && (
+                        <div className="text-xs text-slate-500 mt-0.5">{expense.note}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                      {getPeriodLabel(expense.period)}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="text-sm text-slate-600">{formatDate(expense.date)}</span>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <span className="font-semibold text-red-600">{formatRupiah(expense.amount)}</span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(expense)}
+                        className="hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteId(expense.id)}
+                        className="hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {/* Total Row */}
+              <tr className="bg-red-50 border-t-2 border-red-200">
+                <td colSpan={3} className="py-4 px-4">
+                  <span className="font-bold text-slate-900 text-lg">Total</span>
+                </td>
+                <td className="py-4 px-4 text-right" colSpan={2}>
+                  <span className="font-bold text-red-600 text-xl">
+                    {formatRupiah(totalExpenses)}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
@@ -213,6 +245,6 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

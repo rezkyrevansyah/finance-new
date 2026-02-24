@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Enable dynamic rendering and disable cache for real-time data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -21,7 +25,11 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     })
 
-    return NextResponse.json(expenses)
+    return NextResponse.json(expenses, {
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch expenses', details: error },

@@ -24,15 +24,15 @@ type FilterType = 'all' | 'active' | 'inactive'
 
 export default function WishlistPage() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [selectedWishlist, setSelectedWishlist] = useState<WishlistItem | null>(null)
   const [filter, setFilter] = useState<FilterType>('all')
 
   const fetchWishlist = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch('/api/wishlist')
+      const response = await fetch('/api/wishlist', {
+        cache: 'no-store',
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch wishlist')
@@ -42,8 +42,6 @@ export default function WishlistPage() {
       setWishlist(data)
     } catch (error) {
       console.error('Error fetching wishlist:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -61,30 +59,43 @@ export default function WishlistPage() {
     setFormOpen(true)
   }
 
-  const handleSuccess = () => {
-    fetchWishlist()
+  const handleSuccess = (newItem?: WishlistItem) => {
+    if (newItem) {
+      // Optimistic update for create/update
+      setWishlist(prev => {
+        const exists = prev.find(w => w.id === newItem.id)
+        if (exists) {
+          // Update existing
+          return prev.map(w => w.id === newItem.id ? newItem : w)
+        } else {
+          // Add new
+          return [newItem, ...prev]
+        }
+      })
+    } else {
+      // Fallback: refetch all
+      fetchWishlist()
+    }
   }
 
   const handleToggle = (id: string, isActive: boolean) => {
-    // Optimistic update - instant UI
+    // Optimistic update
     setWishlist((prev) =>
       prev.map((item) => (item.id === id ? { ...item, isActive } : item))
     )
   }
 
-  const handleDelete = () => {
-    // Refetch to update list
-    fetchWishlist()
+  const handleDelete = (id: string) => {
+    // Optimistic update - remove immediately
+    setWishlist((prev) => prev.filter((item) => item.id !== id))
   }
 
-  // Filter wishlist
   const filteredWishlist = wishlist.filter((item) => {
     if (filter === 'active') return item.isActive
     if (filter === 'inactive') return !item.isActive
     return true
   })
 
-  // Sort by target period ascending (items without target period at the end)
   const sortedWishlist = [...filteredWishlist].sort((a, b) => {
     if (a.targetPeriod === null && b.targetPeriod === null) return 0
     if (a.targetPeriod === null) return 1
@@ -92,37 +103,20 @@ export default function WishlistPage() {
     return (a.targetPeriod || 0) - (b.targetPeriod || 0)
   })
 
-  // Calculate total budget for active items
   const totalBudgetActive = wishlist
     .filter((item) => item.isActive)
     .reduce((sum, item) => sum + item.price, 0)
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Wishlist
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Track items you want to buy
-          </p>
-        </div>
-        <div className="h-96 animate-pulse rounded-lg bg-gray-200" />
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold text-slate-900">
             Wishlist
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Track items you want to buy
+          <p className="text-sm text-slate-600 mt-1">
+            Track barang yang ingin Anda beli
           </p>
         </div>
         <Button onClick={handleAdd}>
@@ -131,22 +125,22 @@ export default function WishlistPage() {
         </Button>
       </div>
 
-      {/* Total Budget */}
-      <div className="rounded-lg border bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
+      {/* Total Budget Card */}
+      <div className="bg-white rounded-lg border p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">
+            <p className="text-sm font-medium text-slate-600">
               Total Budget Wishlist Aktif
             </p>
-            <p className="mt-1 text-3xl font-bold text-blue-600">
+            <p className="text-3xl font-bold text-pink-600 mt-1">
               {formatRupiah(totalBudgetActive)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm font-medium text-slate-600">
               {wishlist.filter((item) => item.isActive).length} item aktif
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               dari {wishlist.length} total item
             </p>
           </div>
@@ -170,12 +164,12 @@ export default function WishlistPage() {
 
       {/* Wishlist Grid */}
       {sortedWishlist.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-white p-12">
-          <div className="text-center text-gray-500">
-            <p className="text-sm font-medium">
+        <div className="bg-white rounded-lg border p-12">
+          <div className="text-center">
+            <p className="text-slate-600 font-medium">
               {filter === 'all' ? 'Belum ada wishlist' : `Tidak ada wishlist ${filter === 'active' ? 'aktif' : 'tidak aktif'}`}
             </p>
-            <p className="mt-1 text-xs">
+            <p className="text-slate-400 text-sm mt-1">
               Klik tombol "Tambah Wishlist" untuk memulai
             </p>
           </div>

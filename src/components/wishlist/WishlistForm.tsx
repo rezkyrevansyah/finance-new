@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { getPeriodLabel } from '@/lib/utils'
+import { useRupiahInput } from '@/hooks/useRupiahInput'
 
 interface WishlistFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   wishlist?: WishlistItem | null
-  onSuccess: () => void
+  onSuccess: (wishlist?: WishlistItem) => void
 }
 
 interface WishlistItem {
@@ -30,9 +31,9 @@ interface WishlistItem {
 
 export function WishlistForm({ open, onOpenChange, wishlist, onSuccess }: WishlistFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const price = useRupiahInput(0)
   const [formData, setFormData] = useState({
     name: '',
-    price: '',
     targetPeriod: '',
     note: '',
   })
@@ -41,17 +42,17 @@ export function WishlistForm({ open, onOpenChange, wishlist, onSuccess }: Wishli
     if (wishlist) {
       setFormData({
         name: wishlist.name,
-        price: String(wishlist.price),
         targetPeriod: wishlist.targetPeriod ? String(wishlist.targetPeriod) : '',
         note: wishlist.note || '',
       })
+      price.setValue(wishlist.price)
     } else {
       setFormData({
         name: '',
-        price: '',
         targetPeriod: '',
         note: '',
       })
+      price.setValue(0)
     }
   }, [wishlist, open])
 
@@ -62,7 +63,7 @@ export function WishlistForm({ open, onOpenChange, wishlist, onSuccess }: Wishli
     try {
       const payload = {
         name: formData.name,
-        price: parseFloat(formData.price),
+        price: price.numericValue,
         targetPeriod: formData.targetPeriod ? parseInt(formData.targetPeriod) : undefined,
         targetYear: formData.targetPeriod ? 2026 : undefined,
         note: formData.note || undefined,
@@ -81,8 +82,9 @@ export function WishlistForm({ open, onOpenChange, wishlist, onSuccess }: Wishli
         throw new Error('Failed to save wishlist')
       }
 
+      const savedWishlist = await response.json()
       toast.success(wishlist ? 'Wishlist berhasil diupdate' : 'Wishlist berhasil ditambahkan')
-      onSuccess()
+      onSuccess(savedWishlist)
       onOpenChange(false)
     } catch (error) {
       console.error('Error saving wishlist:', error)
@@ -115,12 +117,10 @@ export function WishlistForm({ open, onOpenChange, wishlist, onSuccess }: Wishli
             <Label htmlFor="price">Harga (Rp) *</Label>
             <Input
               id="price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="0"
+              type="text"
+              value={price.displayValue}
+              onChange={(e) => price.handleChange(e.target.value)}
+              placeholder="Masukkan nominal"
               required
             />
           </div>
@@ -128,14 +128,14 @@ export function WishlistForm({ open, onOpenChange, wishlist, onSuccess }: Wishli
           <div className="space-y-2">
             <Label htmlFor="targetPeriod">Target Bulan (Opsional)</Label>
             <Select
-              value={formData.targetPeriod}
-              onValueChange={(value) => setFormData({ ...formData, targetPeriod: value })}
+              value={formData.targetPeriod === '' ? 'none' : formData.targetPeriod}
+              onValueChange={(value) => setFormData({ ...formData, targetPeriod: value === 'none' ? '' : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="-- Belum ditentukan --" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-- Belum ditentukan --</SelectItem>
+                <SelectItem value="none">-- Belum ditentukan --</SelectItem>
                 {[...Array(12)].map((_, i) => {
                   const period = i + 1
                   return (

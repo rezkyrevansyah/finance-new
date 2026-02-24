@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     const forceBalances = await prisma.forceBalance.findMany({
       where: { year: 2026 }
     })
 
-    return NextResponse.json(forceBalances)
+    return NextResponse.json(forceBalances, {
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch force balances', details: error },

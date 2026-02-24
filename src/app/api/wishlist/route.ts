@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     const wishlists = await prisma.wishlist.findMany({
@@ -10,7 +13,11 @@ export async function GET() {
       ]
     })
 
-    return NextResponse.json(wishlists)
+    return NextResponse.json(wishlists, {
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch wishlist', details: error },

@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { formatRupiah, getPeriodLabel } from '@/lib/utils'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -32,7 +31,7 @@ interface WishlistItem {
 interface WishlistCardProps {
   item: WishlistItem
   onEdit: (item: WishlistItem) => void
-  onDelete: () => void
+  onDelete: (id: string) => void
   onToggle: (id: string, isActive: boolean) => void
 }
 
@@ -40,7 +39,6 @@ export function WishlistCard({ item, onEdit, onDelete, onToggle }: WishlistCardP
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const handleToggle = async (checked: boolean) => {
-    // Optimistic update - instant UI
     onToggle(item.id, checked)
 
     try {
@@ -57,7 +55,6 @@ export function WishlistCard({ item, onEdit, onDelete, onToggle }: WishlistCardP
       toast.success(checked ? 'Wishlist diaktifkan' : 'Wishlist dinonaktifkan')
     } catch (error) {
       console.error('Error toggling wishlist:', error)
-      // Rollback on error
       onToggle(item.id, !checked)
       toast.error('Gagal mengubah status wishlist')
     }
@@ -66,12 +63,14 @@ export function WishlistCard({ item, onEdit, onDelete, onToggle }: WishlistCardP
   const handleDelete = async () => {
     if (!deleteId) return
 
-    // Close dialog & update UI instantly
+    const idToDelete = deleteId
     setDeleteId(null)
-    onDelete()
+
+    // Optimistic update - call parent to remove from UI immediately
+    onDelete(idToDelete)
 
     try {
-      const response = await fetch(`/api/wishlist/${deleteId}`, {
+      const response = await fetch(`/api/wishlist/${idToDelete}`, {
         method: 'DELETE',
       })
 
@@ -83,30 +82,31 @@ export function WishlistCard({ item, onEdit, onDelete, onToggle }: WishlistCardP
     } catch (error) {
       console.error('Error deleting wishlist:', error)
       toast.error('Gagal menghapus wishlist')
-      // Refetch to restore
-      onDelete()
+      // On error, reload to restore data
+      window.location.reload()
     }
   }
 
   return (
     <>
-      <Card className={`p-4 transition-opacity ${!item.isActive ? 'opacity-50' : ''}`}>
-        <div className="space-y-3">
-          {/* Header with Name and Actions */}
+      <div className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow">
+        <div className="space-y-4">
+          {/* Header with Actions */}
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">{item.name}</h3>
+            <div className="flex-1 pr-4">
+              <h3 className="font-bold text-slate-900 text-lg line-clamp-2">{item.name}</h3>
               {!item.isActive && (
-                <Badge variant="secondary" className="mt-1">
+                <Badge variant="secondary" className="mt-2 bg-slate-200 text-slate-600">
                   Tidak Aktif
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onEdit(item)}
+                className="h-9 w-9 p-0 hover:bg-blue-50 hover:text-blue-600"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -114,46 +114,54 @@ export function WishlistCard({ item, onEdit, onDelete, onToggle }: WishlistCardP
                 variant="ghost"
                 size="sm"
                 onClick={() => setDeleteId(item.id)}
+                className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600"
               >
-                <Trash2 className="h-4 w-4 text-red-600" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
           {/* Price */}
-          <div className="text-2xl font-bold text-blue-600">
-            {formatRupiah(item.price)}
+          <div className="py-4">
+            <p className="text-3xl font-bold text-pink-600">
+              {formatRupiah(item.price)}
+            </p>
           </div>
 
           {/* Target Period */}
-          <div className="text-sm text-gray-600">
-            Target: {item.targetPeriod ? `${getPeriodLabel(item.targetPeriod)} ${item.targetYear || ''}` : 'Belum ditentukan'}
+          <div className="flex items-center gap-2 text-sm">
+            <div className="h-8 w-8 rounded-lg bg-pink-50 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-pink-600" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Target</p>
+              <p className="font-medium text-slate-700">
+                {item.targetPeriod ? `${getPeriodLabel(item.targetPeriod)} ${item.targetYear || ''}` : 'Belum ditentukan'}
+              </p>
+            </div>
           </div>
 
           {/* Note */}
           {item.note && (
-            <div className="text-sm text-gray-500 italic line-clamp-2">
-              {item.note}
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-sm text-slate-600 line-clamp-2">
+                {item.note}
+              </p>
             </div>
           )}
 
           {/* Toggle Switch */}
-          <div className="flex items-center justify-between pt-2 border-t">
-            <span className="text-sm font-medium text-gray-700">
-              Status
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+            <span className="text-sm font-medium text-slate-700">
+              Status Aktif
             </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">
-                {item.isActive ? 'Aktif' : 'Tidak Aktif'}
-              </span>
-              <Switch
-                checked={item.isActive}
-                onCheckedChange={handleToggle}
-              />
-            </div>
+            <Switch
+              checked={item.isActive}
+              onCheckedChange={handleToggle}
+            />
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

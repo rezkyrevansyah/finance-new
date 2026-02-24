@@ -20,14 +20,14 @@ interface Expense {
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
 
   const fetchExpenses = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch('/api/expenses')
+      const response = await fetch('/api/expenses', {
+        cache: 'no-store',
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch expenses')
@@ -37,8 +37,6 @@ export default function ExpensesPage() {
       setExpenses(data)
     } catch (error) {
       console.error('Error fetching expenses:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -56,24 +54,28 @@ export default function ExpensesPage() {
     setFormOpen(true)
   }
 
-  const handleSuccess = () => {
-    fetchExpenses()
+  const handleSuccess = (newExpense?: Expense) => {
+    if (newExpense) {
+      // Optimistic update for create/update
+      setExpenses(prev => {
+        const exists = prev.find(e => e.id === newExpense.id)
+        if (exists) {
+          // Update existing
+          return prev.map(e => e.id === newExpense.id ? newExpense : e)
+        } else {
+          // Add new
+          return [newExpense, ...prev]
+        }
+      })
+    } else {
+      // Fallback: refetch all
+      fetchExpenses()
+    }
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Expenses
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage your monthly expenses
-          </p>
-        </div>
-        <div className="h-96 animate-pulse rounded-lg bg-gray-200" />
-      </div>
-    )
+  const handleDelete = (id: string) => {
+    // Optimistic update - remove immediately from UI
+    setExpenses(prev => prev.filter(exp => exp.id !== id))
   }
 
   return (
@@ -81,11 +83,11 @@ export default function ExpensesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold text-slate-900">
             Expenses
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage your monthly expenses
+          <p className="text-sm text-slate-600 mt-1">
+            Track dan kelola pengeluaran bulanan Anda
           </p>
         </div>
         <Button onClick={handleAdd}>
@@ -98,7 +100,7 @@ export default function ExpensesPage() {
       <ExpenseList
         expenses={expenses}
         onEdit={handleEdit}
-        onDelete={handleSuccess}
+        onDelete={handleDelete}
       />
 
       {/* Expense Form Dialog */}

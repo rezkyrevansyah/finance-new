@@ -28,17 +28,15 @@ interface WishlistItem {
 export default function DashboardPage() {
   const [cashflowData, setCashflowData] = useState<CashflowResponse | null>(null)
   const [wishlistData, setWishlistData] = useState<WishlistItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const fetchData = async (showToast = false) => {
     try {
       if (showToast) setIsRefreshing(true)
-      else setIsLoading(true)
 
       const [cashflowRes, wishlistRes] = await Promise.all([
-        fetch('/api/cashflow'),
-        fetch('/api/wishlist'),
+        fetch('/api/cashflow', { cache: 'no-store' }),
+        fetch('/api/wishlist', { cache: 'no-store' }),
       ])
 
       if (!cashflowRes.ok || !wishlistRes.ok) {
@@ -58,7 +56,6 @@ export default function DashboardPage() {
       console.error('Error fetching data:', error)
       toast.error('Gagal memuat data')
     } finally {
-      setIsLoading(false)
       setIsRefreshing(false)
     }
   }
@@ -73,51 +70,27 @@ export default function DashboardPage() {
 
   const totalWishlistActive = wishlistData.filter((w) => w.isActive).length
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Dashboard
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Gajian setiap tanggal 25
-          </p>
-        </div>
-
-        {/* Loading Skeleton */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="h-32 animate-pulse rounded-lg bg-gray-200"
-            />
-          ))}
-        </div>
-        <div className="h-96 animate-pulse rounded-lg bg-gray-200" />
-      </div>
-    )
-  }
-
   if (!cashflowData) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <p className="text-gray-500">Tidak ada data</p>
+        <div className="text-center">
+          <p className="text-slate-600 font-medium">Tidak ada data</p>
+          <p className="text-slate-400 text-sm mt-1">Mulai dengan mengatur konfigurasi di Settings</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Page Header with Refresh Button */}
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold text-slate-900">
             Dashboard
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Gajian setiap tanggal 25
+          <p className="text-sm text-slate-600 mt-1">
+            Gajian setiap tanggal 25 • 2026 Edition
           </p>
         </div>
         <Button
