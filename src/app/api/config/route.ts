@@ -4,12 +4,14 @@ import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+type ConfigRecord = { key: string; value: string | null }
+
 export async function GET() {
   try {
     const configs = await prisma.config.findMany()
 
-    const monthlySalary = Number(configs.find(c => c.key === 'monthly_salary')?.value || 0)
-    const initialBalance = Number(configs.find(c => c.key === 'initial_balance')?.value || 0)
+    const monthlySalary = Number((configs as ConfigRecord[]).find(c => c.key === 'monthly_salary')?.value || 0)
+    const initialBalance = Number((configs as ConfigRecord[]).find(c => c.key === 'initial_balance')?.value || 0)
 
     return NextResponse.json({
       monthly_salary: monthlySalary,
