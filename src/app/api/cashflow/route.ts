@@ -12,8 +12,8 @@ export async function GET() {
       prisma.forceBalance.findMany({ where: { year: 2026 } })
     ])
 
-    const salary = Number(configs.find(c => c.key === 'monthly_salary')?.value || 0)
-    const initialBalance = Number(configs.find(c => c.key === 'initial_balance')?.value || 0)
+    const salary = Number(configs.find((c: { key: string; value: string | null }) => c.key === 'monthly_salary')?.value || 0)
+    const initialBalance = Number(configs.find((c: { key: string; value: string | null }) => c.key === 'initial_balance')?.value || 0)
 
     const periods = calculateAllPeriods({
       salary,

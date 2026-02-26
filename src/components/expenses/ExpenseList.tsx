@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { formatRupiah, getPeriodLabel } from '@/lib/utils'
-import { Pencil, Trash2, Filter } from 'lucide-react'
+import { Pencil, Trash2, Filter, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -37,11 +37,13 @@ interface ExpenseListProps {
   expenses: Expense[]
   onEdit: (expense: Expense) => void
   onDelete: (id: string) => void
+  onResetAll: () => void
 }
 
-export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
+export function ExpenseList({ expenses, onEdit, onDelete, onResetAll }: ExpenseListProps) {
   const [filterPeriod, setFilterPeriod] = useState<string>('all')
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [showResetDialog, setShowResetDialog] = useState(false)
 
   const filteredExpenses = expenses.filter((expense) => {
     if (filterPeriod === 'all') return true
@@ -95,7 +97,7 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
             <Trash2 className="h-8 w-8 text-red-500" />
           </div>
           <p className="text-slate-600 font-medium">Belum ada expense</p>
-          <p className="text-slate-400 text-sm mt-1">Klik tombol "Tambah Expense" untuk memulai</p>
+          <p className="text-slate-400 text-sm mt-1">Klik tombol &quot;Tambah Expense&quot; untuk memulai</p>
         </div>
       </div>
     )
@@ -115,6 +117,7 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
               <p className="text-xs text-slate-500">Total: {filteredExpenses.length} expenses</p>
             </div>
           </div>
+          <div className="flex items-center gap-3">
 
           <Select value={filterPeriod} onValueChange={setFilterPeriod}>
             <SelectTrigger className="w-[200px]">
@@ -132,6 +135,16 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
               })}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowResetDialog(true)}
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+          >
+            <RotateCcw className="h-4 w-4 mr-1.5" />
+            Reset Semua
+          </Button>
+          </div>
         </div>
 
         {/* Table */}
@@ -220,7 +233,7 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Single Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
@@ -241,6 +254,41 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
               onClick={handleDelete}
             >
               Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset All Confirmation Dialog */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <RotateCcw className="h-5 w-5" />
+              Reset Semua Expense
+            </DialogTitle>
+            <DialogDescription>
+              Semua data expense akan dihapus permanen. Aksi ini{' '}
+              <span className="font-semibold text-slate-800">tidak dapat dibatalkan</span>.
+              Pastikan Anda yakin sebelum melanjutkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowResetDialog(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowResetDialog(false)
+                onResetAll()
+              }}
+            >
+              <RotateCcw className="h-4 w-4 mr-1.5" />
+              Ya, Reset Semua
             </Button>
           </DialogFooter>
         </DialogContent>

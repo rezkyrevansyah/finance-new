@@ -5,6 +5,7 @@ import { ExpenseForm } from '@/components/expenses/ExpenseForm'
 import { ExpenseList } from '@/components/expenses/ExpenseList'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Expense {
   id: string
@@ -54,7 +55,8 @@ export default function ExpensesPage() {
     setFormOpen(true)
   }
 
-  const handleSuccess = (newExpense?: Expense) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSuccess = (newExpense?: any) => {
     if (newExpense) {
       // Optimistic update for create/update
       setExpenses(prev => {
@@ -76,6 +78,27 @@ export default function ExpensesPage() {
   const handleDelete = (id: string) => {
     // Optimistic update - remove immediately from UI
     setExpenses(prev => prev.filter(exp => exp.id !== id))
+  }
+
+  const handleResetAll = async () => {
+    // Optimistic update - clear UI immediately
+    setExpenses([])
+
+    try {
+      const response = await fetch('/api/expenses', {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reset expenses')
+      }
+
+      toast.success('Semua expense berhasil direset')
+    } catch (error) {
+      console.error('Error resetting expenses:', error)
+      toast.error('Gagal mereset expense')
+      fetchExpenses()
+    }
   }
 
   return (
@@ -101,6 +124,7 @@ export default function ExpensesPage() {
         expenses={expenses}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onResetAll={handleResetAll}
       />
 
       {/* Expense Form Dialog */}
