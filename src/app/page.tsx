@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { PeriodData } from '@/lib/cashflow'
 import { SummaryCards } from '@/components/dashboard/SummaryCards'
-import { CashFlowTable } from '@/components/dashboard/CashFlowTable'
+import { CashFlowSection } from '@/components/dashboard/CashFlowSection'
+import { QuickAddExpenseDialog } from '@/components/dashboard/QuickAddExpenseDialog'
+import { QuickAddIncomeDialog } from '@/components/dashboard/QuickAddIncomeDialog'
 import { Button } from '@/components/ui/button'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface CashflowResponse {
@@ -29,6 +31,8 @@ export default function DashboardPage() {
   const [cashflowData, setCashflowData] = useState<CashflowResponse | null>(null)
   const [wishlistData, setWishlistData] = useState<WishlistItem[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false)
+  const [incomeDialogOpen, setIncomeDialogOpen] = useState(false)
 
   const fetchData = async (showToast = false) => {
     try {
@@ -113,10 +117,44 @@ export default function DashboardPage() {
         totalWishlistActive={totalWishlistActive}
       />
 
-      {/* CashFlow Table */}
-      <CashFlowTable
+      {/* Quick Add Bar */}
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          className="flex-1 h-12 border-dashed border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+          onClick={() => setExpenseDialogOpen(true)}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Tambah Expense
+        </Button>
+        <Button
+          variant="outline"
+          className="flex-1 h-12 border-dashed border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+          onClick={() => setIncomeDialogOpen(true)}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Tambah Income
+        </Button>
+      </div>
+
+      {/* CashFlow Section (Table + Timeline tabs) */}
+      <CashFlowSection
         periods={cashflowData.periods}
         currentPeriod={cashflowData.currentPeriod}
+      />
+
+      {/* Quick Add Dialogs */}
+      <QuickAddExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        currentPeriod={cashflowData.currentPeriod}
+        onSuccess={() => fetchData()}
+      />
+      <QuickAddIncomeDialog
+        open={incomeDialogOpen}
+        onOpenChange={setIncomeDialogOpen}
+        currentPeriod={cashflowData.currentPeriod}
+        onSuccess={() => fetchData()}
       />
     </div>
   )

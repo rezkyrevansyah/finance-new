@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge'
 interface CashFlowTableProps {
   periods: PeriodData[]
   currentPeriod: number
+  hideHeader?: boolean
 }
 
-export function CashFlowTable({ periods, currentPeriod }: CashFlowTableProps) {
+export function CashFlowTable({ periods, currentPeriod, hideHeader }: CashFlowTableProps) {
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null)
 
   const toggleExpand = (period: number) => {
@@ -36,12 +37,14 @@ export function CashFlowTable({ periods, currentPeriod }: CashFlowTableProps) {
   return (
     <div className="bg-white rounded-lg border p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          Cashflow 2026
-        </h2>
-        <p className="text-sm text-slate-500">Breakdown periode per bulan</p>
-      </div>
+      {!hideHeader && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            Cashflow 2026
+          </h2>
+          <p className="text-sm text-slate-500">Breakdown periode per bulan</p>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto -mx-6 px-6">
