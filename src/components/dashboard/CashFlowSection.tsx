@@ -13,7 +13,7 @@ interface CashFlowSectionProps {
 
 export function CashFlowSection({ periods, currentPeriod }: CashFlowSectionProps) {
   return (
-    <Tabs defaultValue="table">
+    <Tabs defaultValue="timeline">
       {/* Section header + tab switcher */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
